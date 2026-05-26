@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLSI Open-Source Tool Flow – Beginner's Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --card: #1a1e28;
+    --border: #2a2f3d;
+    --accent: #5b8dee;
+    --accent2: #3ddba0;
+    --accent3: #f5a623;
+    --accent4: #e0507a;
+    --text: #e8eaf0;
+    --muted: #8890a4;
+    --code-bg: #0a0c10;
+    --yosys: #5b8dee;
+    --openroad: #3ddba0;
+    --klayout: #f5a623;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+  /* ── HEADER ── */
+  .hero {
+    background: linear-gradient(135deg, #0d1220 0%, #111827 60%, #0d1018 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 70% 40%, rgba(91,141,238,0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 40% at 20% 80%, rgba(61,219,160,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-inner { max-width: 960px; margin: 0 auto; position: relative; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(91,141,238,0.12); border: 1px solid rgba(91,141,238,0.3);
+    color: #8bb4f5; border-radius: 20px; padding: 4px 14px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 20px;
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #5b8dee; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  h1 {
+    font-size: clamp(28px, 5vw, 48px); font-weight: 700; line-height: 1.15;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #e8eaf0 30%, #8bb4f5);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .hero-sub { font-size: 16px; color: var(--muted); max-width: 560px; line-height: 1.6; margin-bottom: 30px; }
+  /* ── TOOL PILLS ── */
+  .tool-pills { display: flex; gap: 12px; flex-wrap: wrap; }
+  .pill {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: 1px solid; cursor: pointer; transition: all 0.2s;
+    text-decoration: none;
+  }
+  .pill-y { color: var(--yosys); border-color: rgba(91,141,238,0.35); background: rgba(91,141,238,0.08); }
+  .pill-y:hover { background: rgba(91,141,238,0.18); }
+  .pill-o { color: var(--openroad); border-color: rgba(61,219,160,0.35); background: rgba(61,219,160,0.08); }
+  .pill-o:hover { background: rgba(61,219,160,0.18); }
+  .pill-k { color: var(--klayout); border-color: rgba(245,166,35,0.35); background: rgba(245,166,35,0.08); }
+  .pill-k:hover { background: rgba(245,166,35,0.18); }
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,15,20,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+  }
+  .nav-inner { max-width: 960px; margin: 0 auto; display: flex; gap: 4px; overflow-x: auto; padding: 10px 0; }
+  .nav-link {
+    white-space: nowrap; padding: 6px 14px; border-radius: 6px;
+    font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: none;
+    transition: all 0.15s;
+  }
+  .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+  .nav-link.active { color: var(--accent); background: rgba(91,141,238,0.1); }
+  /* ── MAIN ── */
+  main { max-width: 960px; margin: 0 auto; padding: 40px; }
+  section { margin-bottom: 70px; scroll-margin-top: 60px; }
+  h2 {
+    font-size: 22px; font-weight: 700; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  h2 .section-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  h3 { font-size: 17px; font-weight: 600; margin: 28px 0 10px; color: #c8d0e0; }
+  p { color: #b0b8cc; margin-bottom: 14px; }
+  /* ── FLOW DIAGRAM ── */
+  .flow-diagram {
+    display: flex; align-items: center; gap: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px 24px; margin: 28px 0;
+    overflow-x: auto;
+  }
+  .flow-step {
+    flex: 1; min-width: 120px; text-align: center;
+    padding: 16px 12px; border-radius: 10px;
+    border: 1px solid; transition: transform 0.2s;
+  }
+  .flow-step:hover { transform: translateY(-2px); }
+  .flow-step.rtl { border-color: rgba(91,141,238,0.4); background: rgba(91,141,238,0.08); }
+  .flow-step.pnr { border-color: rgba(61,219,160,0.4); background: rgba(61,219,160,0.08); }
+  .flow-step.ver { border-color: rgba(245,166,35,0.4); background: rgba(245,166,35,0.08); }
+  .flow-step .step-icon { font-size: 24px; margin-bottom: 8px; }
+  .flow-step .step-name { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .flow-step.rtl .step-name { color: var(--yosys); }
+  .flow-step.pnr .step-name { color: var(--openroad); }
+  .flow-step.ver .step-name { color: var(--klayout); }
+  .flow-step .step-tool { font-size: 11px; color: var(--muted); }
+  .flow-arrow { font-size: 20px; color: var(--muted); padding: 0 6px; flex-shrink: 0; }
+  .flow-file { font-size: 11px; color: var(--muted); text-align: center; margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
+  /* ── TOOL CARDS ── */
+  .tool-card {
+    border-radius: 14px; padding: 28px; margin-bottom: 28px;
+    border: 1px solid var(--border); background: var(--card);
+    position: relative; overflow: hidden;
+  }
+  .tool-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .tool-card.yosys::before { background: linear-gradient(90deg, var(--yosys), transparent); }
+  .tool-card.openroad::before { background: linear-gradient(90deg, var(--openroad), transparent); }
+  .tool-card.klayout::before { background: linear-gradient(90deg, var(--klayout), transparent); }
+  .tool-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+  .tool-logo {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0; font-weight: 700;
+  }
+  .tool-logo.y { background: rgba(91,141,238,0.15); color: var(--yosys); }
+  .tool-logo.o { background: rgba(61,219,160,0.15); color: var(--openroad); }
+  .tool-logo.k { background: rgba(245,166,35,0.15); color: var(--klayout); }
+  .tool-title { font-size: 20px; font-weight: 700; }
+  .tool-subtitle { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  /* ── CODE BLOCKS ── */
+  .code-block {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 10px; margin: 16px 0; overflow: hidden;
+  }
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px; border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+  }
+  .code-lang { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+  .code-copy {
+    font-size: 11px; color: var(--muted); cursor: pointer; background: none; border: 1px solid var(--border);
+    color: var(--muted); padding: 3px 10px; border-radius: 4px; transition: all 0.15s; font-family: inherit;
+  }
+  .code-copy:hover { color: var(--text); border-color: var(--accent); }
+  pre {
+    padding: 18px; overflow-x: auto; font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; line-height: 1.65; color: #c8d8f0;
+  }
+  .kw { color: #c792ea; }
+  .cm { color: #546e7a; font-style: italic; }
+  .st { color: #c3e88d; }
+  .nm { color: #82aaff; }
+  .op { color: #89ddff; }
+  /* ── CALLOUTS ── */
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 3px solid; display: flex; gap: 12px;
+    font-size: 14px;
+  }
+  .callout.info { background: rgba(91,141,238,0.08); border-color: var(--yosys); color: #c0cef5; }
+  .callout.tip { background: rgba(61,219,160,0.08); border-color: var(--openroad); color: #a0e8c8; }
+  .callout.warn { background: rgba(245,166,35,0.08); border-color: var(--accent3); color: #e8d090; }
+  .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  /* ── STEP LIST ── */
+  .steps { list-style: none; counter-reset: step; }
+  .steps li {
+    counter-increment: step; padding: 14px 16px 14px 56px; position: relative;
+    border-radius: 8px; margin-bottom: 8px; background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border); color: #b0b8cc; font-size: 14px;
+  }
+  .steps li::before {
+    content: counter(step); position: absolute; left: 16px; top: 14px;
+    width: 24px; height: 24px; border-radius: 6px;
+    background: rgba(91,141,238,0.15); color: var(--accent); font-weight: 700;
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13.5px; }
+  th { text-align: left; padding: 10px 14px; background: rgba(255,255,255,0.04); color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid rgba(42,47,61,0.7); color: #b0b8cc; }
+  tr:last-child td { border-bottom: none; }
+  code { font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.07); padding: 2px 6px; border-radius: 4px; font-size: 12.5px; color: #c8d8f0; }
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 20px 0; }
+  .info-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; transition: border-color 0.2s;
+  }
+  .info-card:hover { border-color: rgba(91,141,238,0.4); }
+  .info-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  .info-card p { font-size: 13px; margin: 0; }
+  /* ── GLOSSARY ── */
+  .glossary-item { padding: 14px 0; border-bottom: 1px solid var(--border); display: flex; gap: 20px; }
+  .glossary-item:last-child { border-bottom: none; }
+  .glossary-term { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent); font-weight: 600; min-width: 130px; padding-top: 1px; }
+  .glossary-def { font-size: 14px; color: #b0b8cc; }
+  /* ── TABS ── */
+  .tab-group { margin: 20px 0; }
+  .tab-buttons { display: flex; gap: 4px; margin-bottom: 0; }
+  .tab-btn {
+    padding: 8px 18px; font-size: 13px; font-weight: 600; border: 1px solid var(--border);
+    border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer;
+    background: rgba(255,255,255,0.02); color: var(--muted); transition: all 0.15s;
+    font-family: 'Sora', sans-serif;
+  }
+  .tab-btn.active { background: var(--card); color: var(--text); border-color: var(--border); }
+  .tab-content { background: var(--card); border: 1px solid var(--border); border-radius: 0 8px 8px 8px; padding: 24px; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+  /* ── FILE HIERARCHY ── */
+  .file-tree {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    line-height: 2; color: #8890a4;
+  }
+  .file-tree .dir { color: #82aaff; }
+  .file-tree .file-v { color: #c3e88d; }
+  .file-tree .file-lib { color: #ffcb6b; }
+  .file-tree .file-out { color: #89ddff; }
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; padding: 40px; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 13px;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+  @media (max-width: 640px) {
+    .hero, main { padding: 30px 20px; }
+    nav { padding: 0 20px; }
+    .flow-diagram { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="badge"><span class="dot"></span> Open-Source VLSI</div>
+    <h1>VLSI Tool Flow<br>for Beginners</h1>
+    <p class="hero-sub">A complete beginner-friendly guide to the open-source digital design flow using Yosys, OpenROAD, and KLayout — from RTL to GDSII.</p>
+    <div class="tool-pills">
+      <a href="#yosys" class="pill pill-y">⚡ Yosys — Synthesis</a>
+      <a href="#openroad" class="pill pill-o">🛣 OpenROAD — PnR</a>
+      <a href="#klayout" class="pill pill-k">🔬 KLayout — Verification</a>
+    </div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#overview" class="nav-link active">Overview</a>
+    <a href="#flow" class="nav-link">Tool Flow</a>
+    <a href="#yosys" class="nav-link">Yosys</a>
+    <a href="#openroad" class="nav-link">OpenROAD</a>
+    <a href="#klayout" class="nav-link">KLayout</a>
+    <a href="#example" class="nav-link">Full Example</a>
+    <a href="#glossary" class="nav-link">Glossary</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- ── SECTION 1: OVERVIEW ── -->
+<section id="overview">
+  <h2>
+    <span class="section-icon" style="background:rgba(91,141,238,0.12);color:var(--yosys)">📖</span>
+    What is VLSI Design?
+  </h2>
+  <p>
+    <strong style="color:var(--text)">VLSI</strong> (Very Large Scale Integration) is the process of creating integrated circuits by combining millions or billions of transistors on a single chip. When you design a CPU, GPU, or any custom chip, you go through a series of steps — this series is called the <strong style="color:var(--text)">design flow</strong>.
+  </p>
+  <p>
+    The open-source tools covered in this guide implement a complete flow from a <strong style="color:var(--text)">hardware description</strong> (RTL — Register-Transfer Level code) all the way to a <strong style="color:var(--text)">GDSII</strong> file — the final file format sent to a chip foundry for fabrication.
+  </p>
+
+  <div class="grid-2">
+    <div class="info-card">
+      <h4>🧩 What is RTL?</h4>
+      <p>RTL (Register-Transfer Level) is your design written in a hardware description language like Verilog or VHDL. Think of it as code that describes what your circuit does — like a Python script, but for hardware.</p>
+    </div>
+    <div class="info-card">
+      <h4>📦 What is a Netlist?</h4>
+      <p>A netlist is the output of synthesis — it describes your circuit as interconnected logic gates (AND, OR, NAND, etc.) instead of abstract Verilog. It's the "compiled" version of your RTL.</p>
+    </div>
+    <div class="info-card">
+      <h4>🗺 What is a DEF/LEF file?</h4>
+      <p>DEF (Design Exchange Format) stores the physical placement of cells and wires on the chip. LEF (Library Exchange Format) stores the geometry rules of the cell library you're using.</p>
+    </div>
+    <div class="info-card">
+      <h4>📤 What is GDSII?</h4>
+      <p>GDSII (Graphic Database System II) is the final output — a binary file containing all the exact polygon shapes at every layer of the chip. Foundries use this to physically manufacture your chip.</p>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">💡</span>
+    <div>All three tools in this guide are <strong>completely free and open-source</strong>. The full flow (RTL → GDSII) can be run on a laptop without any commercial license.</div>
+  </div>
+</section>
+
+<!-- ── SECTION 2: TOOL FLOW ── -->
+<section id="flow">
+  <h2>
+    <span class="section-icon" style="background:rgba(61,219,160,0.12);color:var(--openroad)">🔄</span>
+    The Complete Tool Flow
+  </h2>
+  <p>Here's how the three tools connect. Each stage transforms your design into a more physical representation, until you have a real chip layout.</p>
+
+  <div class="flow-diagram">
+    <div class="flow-step rtl">
+      <div class="step-icon">📝</div>
+      <div class="step-name">RTL Design</div>
+      <div class="step-tool">You write this</div>
+      <div class="flow-file">.v / .sv</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step rtl">
+      <div class="step-icon">⚡</div>
+      <div class="step-name">Synthesis</div>
+      <div class="step-tool">Yosys</div>
+      <div class="flow-file">.v netlist</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step pnr">
+      <div class="step-icon">📍</div>
+      <div class="step-name">Floorplan</div>
+      <div class="step-tool">OpenROAD</div>
+      <div class="flow-file">.def</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step pnr">
+      <div class="step-icon">🧩</div>
+      <div class="step-name">Place &amp; Route</div>
+      <div class="step-tool">OpenROAD</div>
+      <div class="flow-file">.def + .sdc</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step ver">
+      <div class="step-icon">🔬</div>
+      <div class="step-name">Verification</div>
+      <div class="step-tool">KLayout</div>
+      <div class="flow-file">.gds</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step ver">
+      <div class="step-icon">🏭</div>
+      <div class="step-name">GDSII Output</div>
+      <div class="step-tool">Ready for fab</div>
+      <div class="flow-file">.gds</div>
+    </div>
+  </div>
+
+  <h3>What happens at each stage?</h3>
+  <table>
+    <thead><tr><th>Stage</th><th>Tool</th><th>Input</th><th>Output</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>RTL Synthesis</td><td><code>yosys</code></td><td>.v (Verilog)</td><td>.v (netlist)</td><td>Converts your Verilog to logic gates from a cell library</td></tr>
+      <tr><td>Floorplanning</td><td><code>openroad</code></td><td>Netlist + LEF</td><td>.def</td><td>Defines the die area and places macros/IO pins</td></tr>
+      <tr><td>Placement</td><td><code>openroad</code></td><td>.def</td><td>.def</td><td>Decides the exact (x,y) position of each logic cell</td></tr>
+      <tr><td>Clock Tree Synthesis</td><td><code>openroad</code></td><td>.def</td><td>.def</td><td>Builds a balanced clock tree for timing</td></tr>
+      <tr><td>Routing</td><td><code>openroad</code></td><td>.def</td><td>.def</td><td>Draws metal wires connecting all gates</td></tr>
+      <tr><td>Sign-off</td><td><code>openroad</code></td><td>.def</td><td>Reports</td><td>Timing, power, IR drop analysis</td></tr>
+      <tr><td>DRC / LVS</td><td><code>klayout</code></td><td>.gds + netlist</td><td>Error report</td><td>Verifies layout follows design rules and matches netlist</td></tr>
+      <tr><td>GDSII Export</td><td><code>klayout</code></td><td>.def + LEF</td><td>.gds</td><td>Creates the final file sent to the foundry</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Your project file structure</h3>
+  <div class="file-tree">
+    <span class="dir">my_chip/</span><br>
+    ├── <span class="dir">rtl/</span><br>
+    │   └── <span class="file-v">counter.v</span>            <span style="color:#546e7a"># Your Verilog source</span><br>
+    ├── <span class="dir">pdk/</span><br>
+    │   ├── <span class="file-lib">sky130_fd_sc_hd.lib</span>   <span style="color:#546e7a"># Cell library timing</span><br>
+    │   └── <span class="file-lib">sky130_fd_sc_hd.lef</span>   <span style="color:#546e7a"># Cell library geometry</span><br>
+    ├── <span class="dir">synth/</span><br>
+    │   ├── synth.tcl<br>
+    │   └── <span class="file-out">counter_synth.v</span>      <span style="color:#546e7a"># Output netlist</span><br>
+    ├── <span class="dir">pnr/</span><br>
+    │   ├── floorplan.tcl<br>
+    │   └── <span class="file-out">counter_routed.def</span>   <span style="color:#546e7a"># Output layout</span><br>
+    └── <span class="dir">gds/</span><br>
+        └── <span class="file-out">counter.gds</span>          <span style="color:#546e7a"># Final GDSII</span>
+  </div>
+</section>
+
+<!-- ── SECTION 3: YOSYS ── -->
+<section id="yosys">
+  <h2>
+    <span class="section-icon" style="background:rgba(91,141,238,0.12);color:var(--yosys)">⚡</span>
+    Yosys — Synthesis
+  </h2>
+
+  <div class="tool-card yosys">
+    <div class="tool-header">
+      <div class="tool-logo y">Y</div>
+      <div>
+        <div class="tool-title" style="color:var(--yosys)">Yosys Open Synthesis Suite</div>
+        <div class="tool-subtitle">RTL Synthesis Framework — converts Verilog to gate-level netlists</div>
+      </div>
+    </div>
+    <p>Yosys is the open-source synthesis engine that reads your Verilog or SystemVerilog, parses it, optimises it, and then maps it to real logic cells from a technology library (called a PDK — Process Design Kit). Think of it as a compiler, but for hardware.</p>
+    <div class="callout tip">
+      <span class="callout-icon">🌐</span>
+      <div>Official site: <strong><a href="https://yosyshq.net/yosys/" style="color:var(--openroad)">yosyshq.net/yosys</a></strong> | GitHub: <strong>YosysHQ/yosys</strong></div>
+    </div>
+  </div>
+
+  <h3>Installing Yosys</h3>
+  <div class="tab-group">
+    <div class="tab-buttons">
+      <button class="tab-btn active" onclick="switchTab('install','linux')">Linux (Ubuntu)</button>
+      <button class="tab-btn" onclick="switchTab('install','mac')">macOS</button>
+      <button class="tab-btn" onclick="switchTab('install','conda')">Conda</button>
+    </div>
+    <div class="tab-content">
+      <div class="tab-pane active" id="install-linux">
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="cm"># Update package list and install Yosys</span>
+sudo apt-get update
+sudo apt-get install -y yosys
+
+<span class="cm"># Verify installation</span>
+yosys --version</pre>
+        </div>
+      </div>
+      <div class="tab-pane" id="install-mac">
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="cm"># Install via Homebrew</span>
+brew install yosys
+
+<span class="cm"># Verify installation</span>
+yosys --version</pre>
+        </div>
+      </div>
+      <div class="tab-pane" id="install-conda">
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="cm"># Install via conda-forge</span>
+conda install -c conda-forge yosys
+
+<span class="cm"># Verify installation</span>
+yosys --version</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>How Yosys Works — Step by Step</h3>
+  <ol class="steps">
+    <li><strong>Parse</strong> — Yosys reads your Verilog file and builds an internal AST (Abstract Syntax Tree) representing the design.</li>
+    <li><strong>Elaborate</strong> — It resolves module instances, parameters, and generates/always blocks into a flat internal representation.</li>
+    <li><strong>Optimise</strong> — Optimisation passes reduce the logic: constant propagation, dead code elimination, Boolean simplification.</li>
+    <li><strong>Map to gates</strong> — The <code>abc</code> engine maps your logic to real cells from the <code>.lib</code> liberty file (e.g. sky130 standard cells).</li>
+    <li><strong>Write netlist</strong> — Outputs a gate-level Verilog netlist (<code>.v</code>) ready for place &amp; route.</li>
+  </ol>
+
+  <h3>Your First Yosys Synthesis</h3>
+  <p>Here's a simple 4-bit counter in Verilog and how to synthesise it:</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">verilog — counter.v</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cm">// Simple 4-bit synchronous counter</span>
+<span class="kw">module</span> <span class="nm">counter</span> (
+    <span class="kw">input</span>  <span class="nm">clk</span>,       <span class="cm">// clock</span>
+    <span class="kw">input</span>  <span class="nm">rst_n</span>,     <span class="cm">// active-low reset</span>
+    <span class="kw">output reg</span> [<span class="nm">3</span>:<span class="nm">0</span>] <span class="nm">count</span>  <span class="cm">// 4-bit output</span>
+);
+
+<span class="kw">always</span> @(<span class="kw">posedge</span> <span class="nm">clk</span> <span class="kw">or</span> <span class="kw">negedge</span> <span class="nm">rst_n</span>) <span class="kw">begin</span>
+    <span class="kw">if</span> (!<span class="nm">rst_n</span>)
+        <span class="nm">count</span> &lt;= <span class="nm">4'b0000</span>;   <span class="cm">// reset to 0</span>
+    <span class="kw">else</span>
+        <span class="nm">count</span> &lt;= <span class="nm">count</span> + <span class="nm">1</span>;  <span class="cm">// increment</span>
+<span class="kw">end</span>
+
+<span class="kw">endmodule</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">tcl — synth.tcl (Yosys script)</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cm"># Step 1: Read the Verilog source</span>
+<span class="kw">read_verilog</span> <span class="st">rtl/counter.v</span>
+
+<span class="cm"># Step 2: Run synthesis for sky130 (SkyWater 130nm PDK)</span>
+<span class="kw">synth_sky130</span> -top counter -flatten
+
+<span class="cm"># Step 3: Map flip-flops and combinational logic</span>
+<span class="kw">dfflibmap</span> -liberty <span class="st">pdk/sky130_fd_sc_hd__tt_025C_1v80.lib</span>
+<span class="kw">abc</span> -liberty <span class="st">pdk/sky130_fd_sc_hd__tt_025C_1v80.lib</span>
+
+<span class="cm"># Step 4: Clean up and write output netlist</span>
+<span class="kw">clean</span>
+<span class="kw">write_verilog</span> <span class="st">synth/counter_synth.v</span>
+
+<span class="cm"># Optional: Show statistics</span>
+<span class="kw">stat</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash — run it</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre>yosys -c synth.tcl</pre>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div>Make sure you have the <strong>sky130 PDK liberty file</strong> (<code>.lib</code>) downloaded before running synthesis. You can get it from the <a href="https://github.com/google/skywater-pdk" style="color:var(--accent3)">SkyWater PDK GitHub repo</a> or via <code>volare</code> / <code>open_pdks</code>.</div>
+  </div>
+
+  <h3>Common Yosys Commands Cheat Sheet</h3>
+  <table>
+    <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>read_verilog &lt;file.v&gt;</code></td><td>Load a Verilog source file</td></tr>
+      <tr><td><code>synth -top &lt;name&gt;</code></td><td>Run generic synthesis, set top module</td></tr>
+      <tr><td><code>synth_sky130 -top &lt;name&gt;</code></td><td>Run synthesis targeting the sky130 PDK</td></tr>
+      <tr><td><code>abc -liberty &lt;file.lib&gt;</code></td><td>Technology-map logic gates using a .lib file</td></tr>
+      <tr><td><code>dfflibmap -liberty &lt;file.lib&gt;</code></td><td>Map flip-flops from the library</td></tr>
+      <tr><td><code>write_verilog &lt;out.v&gt;</code></td><td>Write the gate-level netlist</td></tr>
+      <tr><td><code>show</code></td><td>Open a graphical view of the design (requires graphviz)</td></tr>
+      <tr><td><code>stat</code></td><td>Print area/cell statistics</td></tr>
+      <tr><td><code>flatten</code></td><td>Inline all sub-modules into one flat module</td></tr>
+      <tr><td><code>opt</code></td><td>Run all optimisation passes</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── SECTION 4: OPENROAD ── -->
+<section id="openroad">
+  <h2>
+    <span class="section-icon" style="background:rgba(61,219,160,0.12);color:var(--openroad)">🛣</span>
+    OpenROAD — Place &amp; Route
+  </h2>
+
+  <div class="tool-card openroad">
+    <div class="tool-header">
+      <div class="tool-logo o">OR</div>
+      <div>
+        <div class="tool-title" style="color:var(--openroad)">OpenROAD</div>
+        <div class="tool-subtitle">Automated Physical Design — from netlist to routed layout</div>
+      </div>
+    </div>
+    <p>OpenROAD is a full physical design tool: it takes the synthesised netlist from Yosys and transforms it into a real chip layout. It handles floorplanning, cell placement, clock tree synthesis, routing, and sign-off timing checks — all in one integrated flow.</p>
+    <div class="callout tip">
+      <span class="callout-icon">🌐</span>
+      <div>Official site: <strong><a href="https://theopenroadproject.org" style="color:var(--openroad)">theopenroadproject.org</a></strong> | GitHub: <strong>The-OpenROAD-Project/OpenROAD</strong></div>
+    </div>
+  </div>
+
+  <h3>Installing OpenROAD</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash — easiest: use OpenROAD-flow-scripts</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cm"># Clone the OpenROAD flow scripts (includes everything)</span>
+git clone --recursive https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts
+
+<span class="cm"># Run the install script (Linux recommended)</span>
+cd OpenROAD-flow-scripts
+sudo ./setup.sh
+
+<span class="cm"># Build OpenROAD</span>
+./build_openroad.sh
+
+<span class="cm"># Verify</span>
+./tools/install/OpenROAD/bin/openroad -version</pre>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">🐳</span>
+    <div><strong>Tip for beginners:</strong> The easiest way to get started is using the <strong>Docker image</strong> which has everything pre-installed: <code>docker pull openroad/flow-scripts</code></div>
+  </div>
+
+  <h3>Physical Design Stages Inside OpenROAD</h3>
+  <ol class="steps">
+    <li><strong>Floorplanning</strong> — Define the die area (how big the chip is), set up IO pin locations, and place any large macros (memories, PLLs).</li>
+    <li><strong>Power Planning</strong> — Create a power delivery network (PDN): vertical/horizontal metal stripes supplying VDD and GND to every cell.</li>
+    <li><strong>Placement (GPL)</strong> — Global placement: cells are placed to minimise wire length using force-directed algorithms. Then <strong>detailed placement</strong> legalises them to exact grid positions.</li>
+    <li><strong>Clock Tree Synthesis (CTS)</strong> — Build a balanced clock distribution network so every flip-flop sees the clock at the same time (minimise skew).</li>
+    <li><strong>Routing</strong> — <strong>Global routing</strong> plans the paths. <strong>Detailed routing</strong> draws the actual metal wires layer by layer using DRC rules.</li>
+    <li><strong>Sign-off</strong> — Run static timing analysis (STA) with OpenSTA, check IR-drop, antenna violations, and extract parasitics.</li>
+  </ol>
+
+  <h3>A Complete OpenROAD TCL Flow Script</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">tcl — pnr_flow.tcl</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cm"># ── Read technology libraries ──────────────────────────────</span>
+<span class="kw">read_lef</span> <span class="st">pdk/sky130_fd_sc_hd.tlef</span>   <span class="cm">;# technology LEF (layers)</span>
+<span class="kw">read_lef</span> <span class="st">pdk/sky130_fd_sc_hd.lef</span>    <span class="cm">;# cell LEF (cell shapes)</span>
+<span class="kw">read_liberty</span> <span class="st">pdk/sky130_fd_sc_hd__tt_025C_1v80.lib</span>
+
+<span class="cm"># ── Read the synthesised netlist ──────────────────────────</span>
+<span class="kw">read_verilog</span> <span class="st">synth/counter_synth.v</span>
+<span class="kw">link_design</span> counter
+
+<span class="cm"># ── Apply timing constraints ──────────────────────────────</span>
+<span class="kw">read_sdc</span> <span class="st">constraints/counter.sdc</span>
+
+<span class="cm"># ── 1. Floorplan ─────────────────────────────────────────</span>
+<span class="kw">initialize_floorplan</span> \
+    -die_area  <span class="st">"0 0 100 100"</span> \
+    -core_area <span class="st">"10 10 90 90"</span> \
+    -site      <span class="st">unithd</span>
+
+<span class="cm"># Place IO pins around the perimeter</span>
+<span class="kw">place_pins</span> -hor_layers <span class="st">met2</span> -ver_layers <span class="st">met3</span>
+
+<span class="cm"># ── 2. Power Planning ────────────────────────────────────</span>
+<span class="kw">add_global_connection</span> -net VDD -pin_pattern <span class="st">"VPB|VPWR"</span> -power
+<span class="kw">add_global_connection</span> -net VSS -pin_pattern <span class="st">"VNB|VGND"</span> -ground
+<span class="kw">global_connect</span>
+
+<span class="kw">pdngen</span>   <span class="cm">;# generate power delivery network</span>
+
+<span class="cm"># ── 3. Placement ─────────────────────────────────────────</span>
+<span class="kw">global_placement</span> -density <span class="nm">0.65</span>
+<span class="kw">detailed_placement</span>
+
+<span class="cm"># ── 4. Clock Tree Synthesis ──────────────────────────────</span>
+<span class="kw">clock_tree_synthesis</span> -buf_list <span class="st">"sky130_fd_sc_hd__clkbuf_4 sky130_fd_sc_hd__clkbuf_8"</span>
+<span class="kw">detailed_placement</span>   <span class="cm">;# re-legalise after CTS</span>
+
+<span class="cm"># ── 5. Routing ───────────────────────────────────────────</span>
+<span class="kw">global_route</span> -guide_file <span class="st">pnr/route.guide</span>
+<span class="kw">detailed_route</span> -output_drc <span class="st">pnr/route_drc.rpt</span>
+
+<span class="cm"># ── 6. Sign-off timing check ─────────────────────────────</span>
+<span class="kw">report_checks</span> -path_delay min_max -fields {slew cap input nets fanout}
+<span class="kw">report_wns</span>   <span class="cm">;# worst negative slack</span>
+<span class="kw">report_tns</span>   <span class="cm">;# total negative slack</span>
+
+<span class="cm"># ── Write outputs ─────────────────────────────────────────</span>
+<span class="kw">write_def</span>     <span class="st">pnr/counter_routed.def</span>
+<span class="kw">write_verilog</span> <span class="st">pnr/counter_final.v</span></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">tcl — counter.sdc (constraints)</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cm"># Set clock: 10ns period = 100 MHz</span>
+<span class="kw">create_clock</span> [<span class="nm">get_ports</span> clk] -name clk -period <span class="nm">10</span>
+
+<span class="cm"># Set input/output delays</span>
+<span class="kw">set_input_delay</span>  <span class="nm">2</span> -clock clk [<span class="kw">get_ports</span> rst_n]
+<span class="kw">set_output_delay</span> <span class="nm">2</span> -clock clk [<span class="kw">get_ports</span> count]</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash — run it</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre>openroad -exit pnr_flow.tcl | tee pnr/run.log</pre>
+  </div>
+
+  <h3>OpenROAD Commands Quick Reference</h3>
+  <table>
+    <thead><tr><th>Command</th><th>Stage</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>initialize_floorplan</code></td><td>Floorplan</td><td>Define die/core area and site row</td></tr>
+      <tr><td><code>place_pins</code></td><td>Floorplan</td><td>Place IO pins on the boundary</td></tr>
+      <tr><td><code>pdngen</code></td><td>Power</td><td>Generate power delivery network</td></tr>
+      <tr><td><code>global_placement</code></td><td>Place</td><td>Initial cell placement</td></tr>
+      <tr><td><code>detailed_placement</code></td><td>Place</td><td>Legalise cell positions</td></tr>
+      <tr><td><code>clock_tree_synthesis</code></td><td>CTS</td><td>Build balanced clock tree</td></tr>
+      <tr><td><code>global_route</code></td><td>Route</td><td>Plan routing tracks</td></tr>
+      <tr><td><code>detailed_route</code></td><td>Route</td><td>Final DRC-clean wiring</td></tr>
+      <tr><td><code>report_checks</code></td><td>Timing</td><td>STA timing report</td></tr>
+      <tr><td><code>write_def</code></td><td>Output</td><td>Save layout to .def file</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── SECTION 5: KLAYOUT ── -->
+<section id="klayout">
+  <h2>
+    <span class="section-icon" style="background:rgba(245,166,35,0.12);color:var(--klayout)">🔬</span>
+    KLayout — Viewing &amp; Verification
+  </h2>
+
+  <div class="tool-card klayout">
+    <div class="tool-header">
+      <div class="tool-logo k">KL</div>
+      <div>
+        <div class="tool-title" style="color:var(--klayout)">KLayout</div>
+        <div class="tool-subtitle">Layout Viewer, DRC Engine &amp; GDSII Export</div>
+      </div>
+    </div>
+    <p>KLayout is a powerful layout viewer and editor. In an open-source VLSI flow it serves three important roles: (1) viewing your DEF/GDSII layout, (2) running <strong>DRC</strong> (Design Rule Check) to catch violations before tapeout, and (3) running <strong>LVS</strong> (Layout vs. Schematic) to verify the layout matches your netlist.</p>
+    <div class="callout tip">
+      <span class="callout-icon">🌐</span>
+      <div>Official site: <strong><a href="https://www.klayout.de" style="color:var(--klayout)">klayout.de</a></strong> | GitHub: <strong>KLayout/klayout</strong></div>
+    </div>
+  </div>
+
+  <h3>Installing KLayout</h3>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash — Linux</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cm"># Ubuntu/Debian via apt</span>
+sudo apt-get install -y klayout
+
+<span class="cm"># Or download the binary package from klayout.de</span>
+<span class="cm"># .deb packages available for Ubuntu/Debian</span>
+wget https://www.klayout.org/downloads/Ubuntu-22/klayout_0.29.4-1_amd64.deb
+sudo dpkg -i klayout_0.29.4-1_amd64.deb</pre>
+  </div>
+
+  <h3>Three Ways to Use KLayout</h3>
+
+  <div class="grid-2">
+    <div class="info-card">
+      <h4>👁 GUI Viewer</h4>
+      <p>Open <code>klayout my_chip.gds</code> or <code>klayout my_chip.def</code> and visually inspect every metal layer, cell instance, and wire. Great for debugging routing issues.</p>
+    </div>
+    <div class="info-card">
+      <h4>📏 DRC (Design Rule Check)</h4>
+      <p>Run a <code>.drc</code> rule file against your layout to detect spacing violations, width errors, and enclosure errors. Mandatory before tapeout.</p>
+    </div>
+    <div class="info-card">
+      <h4>🔁 LVS (Layout vs. Schematic)</h4>
+      <p>Compare your routed layout against the original netlist to verify nothing changed. Detects open circuits, short circuits, and wrong connections.</p>
+    </div>
+    <div class="info-card">
+      <h4>🐍 Scripting (Ruby/Python)</h4>
+      <p>KLayout has a full scripting API. Automate DRC/LVS, manipulate cells, generate patterns, or convert file formats with Ruby or Python scripts.</p>
+    </div>
+  </div>
+
+  <h3>Converting DEF + LEF → GDSII with KLayout</h3>
+  <p>After OpenROAD produces the routed <code>.def</code>, KLayout merges it with the cell GDSII views to produce the final <code>.gds</code> tapeout file:</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">python — def_to_gds.py</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">import</span> pya   <span class="cm"># KLayout Python binding</span>
+
+<span class="cm"># Create a layout object</span>
+layout = pya.Layout()
+
+<span class="cm"># Load the technology LEF (layer definitions)</span>
+reader_options = pya.LoadLayoutOptions()
+reader_options.lefdef_config.map_file = <span class="st">"pdk/sky130.map"</span>
+
+<span class="cm"># Read all cell LEF files</span>
+layout.read(<span class="st">"pdk/sky130_fd_sc_hd.lef"</span>)
+
+<span class="cm"># Read the cell GDSII views</span>
+layout.read(<span class="st">"pdk/sky130_fd_sc_hd.gds"</span>)
+
+<span class="cm"># Read the routed DEF (places cells, routes wires)</span>
+layout.read(<span class="st">"pnr/counter_routed.def"</span>, reader_options)
+
+<span class="cm"># Write the final GDSII</span>
+layout.write(<span class="st">"gds/counter.gds"</span>)
+<span class="kw">print</span>(<span class="st">"GDSII written successfully!"</span>)</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash — run it</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre>klayout -b -r def_to_gds.py</pre>
+  </div>
+
+  <h3>Running DRC with sky130 rules</h3>
+  <p>KLayout uses <code>.lydrc</code> or <code>.drc</code> scripts to check your layout. The sky130 PDK includes ready-made DRC scripts:</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash — run sky130 DRC</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cm"># The sky130 DRC rule deck comes with open_pdks</span>
+klayout -b \
+  -r $PDK_ROOT/sky130A/libs.tech/klayout/drc/sky130A.drc \
+  -rd input=gds/counter.gds \
+  -rd topcell=counter \
+  -rd report=drc/drc_results.xml \
+  gds/counter.gds</pre>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ️</span>
+    <div>DRC output is an XML file you can open back in KLayout's GUI. Each violation is shown as a highlighted region on the layout with an error message — very beginner-friendly!</div>
+  </div>
+
+  <h3>KLayout GUI — Layer Panel Guide</h3>
+  <table>
+    <thead><tr><th>Layer name (sky130)</th><th>Colour</th><th>What it represents</th></tr></thead>
+    <tbody>
+      <tr><td><code>nwell</code></td><td>Deep yellow</td><td>N-well diffusion region</td></tr>
+      <tr><td><code>diff</code> / <code>tap</code></td><td>Green</td><td>Active diffusion areas</td></tr>
+      <tr><td><code>poly</code></td><td>Red</td><td>Polysilicon gate layer</td></tr>
+      <tr><td><code>li1</code></td><td>Dark orange</td><td>Local interconnect (metal 0)</td></tr>
+      <tr><td><code>met1</code></td><td>Blue</td><td>First metal layer (routing)</td></tr>
+      <tr><td><code>met2</code></td><td>Cyan</td><td>Second metal layer</td></tr>
+      <tr><td><code>met3</code></td><td>Purple</td><td>Third metal layer</td></tr>
+      <tr><td><code>met4</code></td><td>Yellow</td><td>Fourth metal layer</td></tr>
+      <tr><td><code>met5</code></td><td>Light blue</td><td>Fifth metal layer (power)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── SECTION 6: FULL EXAMPLE ── -->
+<section id="example">
+  <h2>
+    <span class="section-icon" style="background:rgba(224,80,122,0.12);color:var(--accent4)">🚀</span>
+    Full Example: Counter Chip End-to-End
+  </h2>
+  <p>Let's put it all together and run the complete flow for our 4-bit counter. Here's a single Makefile that orchestrates everything:</p>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">makefile</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cm"># ── Configuration ─────────────────────────────────────────</span>
+<span class="nm">DESIGN</span>   = counter
+<span class="nm">TOP</span>      = counter
+<span class="nm">PDK_ROOT</span> = /home/user/pdks/sky130A
+<span class="nm">LIB</span>      = $(PDK_ROOT)/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+<span class="nm">LEF</span>      = $(PDK_ROOT)/libs.ref/sky130_fd_sc_hd/techlef/sky130_fd_sc_hd.tlef \
+            $(PDK_ROOT)/libs.ref/sky130_fd_sc_hd/lef/sky130_fd_sc_hd.lef
+
+<span class="cm"># ── All targets ───────────────────────────────────────────</span>
+<span class="kw">.PHONY</span>: all synth pnr gds drc clean
+
+<span class="kw">all</span>: gds
+
+<span class="cm"># Step 1 – Synthesis with Yosys</span>
+<span class="kw">synth</span>: rtl/$(DESIGN).v synth/synth.tcl
+	mkdir -p synth
+	yosys -c synth/synth.tcl | tee synth/synth.log
+
+<span class="cm"># Step 2 – Place and Route with OpenROAD</span>
+<span class="kw">pnr</span>: synth pnr/pnr_flow.tcl
+	mkdir -p pnr
+	openroad -exit pnr/pnr_flow.tcl | tee pnr/pnr.log
+
+<span class="cm"># Step 3 – Convert DEF to GDSII with KLayout</span>
+<span class="kw">gds</span>: pnr
+	mkdir -p gds
+	klayout -b -r scripts/def_to_gds.py
+
+<span class="cm"># Step 4 – Run DRC</span>
+<span class="kw">drc</span>: gds
+	mkdir -p drc
+	klayout -b \
+	  -r $(PDK_ROOT)/libs.tech/klayout/drc/sky130A.drc \
+	  -rd input=gds/$(DESIGN).gds \
+	  -rd topcell=$(TOP) \
+	  -rd report=drc/drc_results.xml \
+	  gds/$(DESIGN).gds
+
+<span class="kw">clean</span>:
+	rm -rf synth/ pnr/ gds/ drc/</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">bash — run the full flow</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cm"># Run everything from RTL → GDSII</span>
+make all
+
+<span class="cm"># Or run individual stages</span>
+make synth   <span class="cm"># synthesis only</span>
+make pnr     <span class="cm"># place and route</span>
+make gds     <span class="cm"># gdsii export</span>
+make drc     <span class="cm"># design rule check</span>
+
+<span class="cm"># Open the result in KLayout GUI</span>
+klayout gds/counter.gds</pre>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">🎉</span>
+    <div>After a successful <code>make all</code>, open <code>gds/counter.gds</code> in KLayout and you'll see your chip — all the placed standard cells, metal routing, power rails, and IO pins rendered as coloured polygons!</div>
+  </div>
+
+  <h3>Troubleshooting Common Errors</h3>
+  <table>
+    <thead><tr><th>Error</th><th>Tool</th><th>Likely cause &amp; fix</th></tr></thead>
+    <tbody>
+      <tr><td><code>ERROR: No module ... found</code></td><td>Yosys</td><td>Wrong top module name — check <code>-top</code> matches your Verilog module name</td></tr>
+      <tr><td><code>Cannot open liberty file</code></td><td>Yosys</td><td>Wrong path to <code>.lib</code> — verify <code>$PDK_ROOT</code> is set correctly</td></tr>
+      <tr><td><code>Design has no cells</code></td><td>OpenROAD</td><td>Synthesis didn't write the netlist — check <code>synth.log</code> for Yosys errors</td></tr>
+      <tr><td><code>Placement density too high</code></td><td>OpenROAD</td><td>Core area too small — increase <code>-core_area</code> or lower <code>-density</code></td></tr>
+      <tr><td><code>Routing DRC violations</code></td><td>OpenROAD</td><td>Normal on first run — re-run <code>detailed_route</code> or adjust routing density</td></tr>
+      <tr><td><code>Setup slack negative (WNS)</code></td><td>OpenROAD</td><td>Timing failure — relax clock period in SDC or optimise logic in Yosys</td></tr>
+      <tr><td>DRC violations in KLayout</td><td>KLayout</td><td>Click each violation to locate it — often spacing or well-tap issues from PDN</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── SECTION 7: GLOSSARY ── -->
+<section id="glossary">
+  <h2>
+    <span class="section-icon" style="background:rgba(255,255,255,0.06);color:var(--muted)">📚</span>
+    Glossary of Key Terms
+  </h2>
+  <div>
+    <div class="glossary-item"><span class="glossary-term">RTL</span><span class="glossary-def">Register-Transfer Level. A hardware description at the abstraction level of registers and logic operations, written in Verilog or VHDL.</span></div>
+    <div class="glossary-item"><span class="glossary-term">Synthesis</span><span class="glossary-def">The process of converting RTL code into a gate-level netlist using cells from a standard cell library.</span></div>
+    <div class="glossary-item"><span class="glossary-term">Netlist</span><span class="glossary-def">A description of a circuit as a list of gate instances and the nets (wires) connecting them.</span></div>
+    <div class="glossary-item"><span class="glossary-term">PDK</span><span class="glossary-def">Process Design Kit. Files provided by the foundry describing the manufacturing process: cell libraries, design rules, SPICE models, layer definitions.</span></div>
+    <div class="glossary-item"><span class="glossary-term">LEF</span><span class="glossary-def">Library Exchange Format. Describes cell and technology geometry: layer names, routing rules, cell pin locations, and obstruction areas.</span></div>
+    <div class="glossary-item"><span class="glossary-term">DEF</span><span class="glossary-def">Design Exchange Format. Stores the physical placement of cells and routing of wires for a specific design instance.</span></div>
+    <div class="glossary-item"><span class="glossary-term">Liberty (.lib)</span><span class="glossary-def">A timing/power model file for standard cells. Describes propagation delays, setup/hold times, leakage power at various operating conditions.</span></div>
+    <div class="glossary-item"><span class="glossary-term">Floorplanning</span><span class="glossary-def">The first physical design step: defining die and core area size, placing IO pins, and positioning hard macros.</span></div>
+    <div class="glossary-item"><span class="glossary-term">Placement</span><span class="glossary-def">The step that assigns an (x, y) location to each standard cell within the core area.</span></div>
+    <div class="glossary-item"><span class="glossary-term">CTS</span><span class="glossary-def">Clock Tree Synthesis. Building a balanced tree of clock buffers to distribute the clock signal to all flip-flops with minimal skew.</span></div>
+    <div class="glossary-item"><span class="glossary-term">Routing</span><span class="glossary-def">Drawing metal wire connections between cell pins on the available metal layers, following design rule constraints.</span></div>
+    <div class="glossary-item"><span class="glossary-term">STA</span><span class="glossary-def">Static Timing Analysis. Verifying that all data paths meet setup and hold timing constraints without running simulation.</span></div>
+    <div class="glossary-item"><span class="glossary-term">SDC</span><span class="glossary-def">Synopsys Design Constraints. A TCL-based file format specifying clocks, input/output delays, and false paths for timing analysis.</span></div>
+    <div class="glossary-item"><span class="glossary-term">DRC</span><span class="glossary-def">Design Rule Check. Verifying that the layout geometry obeys the foundry's manufacturing constraints (minimum width, spacing, overlap rules, etc.).</span></div>
+    <div class="glossary-item"><span class="glossary-term">LVS</span><span class="glossary-def">Layout vs. Schematic. Comparing the extracted netlist from the physical layout against the intended netlist to confirm they match.</span></div>
+    <div class="glossary-item"><span class="glossary-term">GDSII</span><span class="glossary-def">Graphic Database System II. The industry-standard binary file format for IC layout polygons — the final file submitted to a foundry for chip fabrication.</span></div>
+    <div class="glossary-item"><span class="glossary-term">PDN</span><span class="glossary-def">Power Delivery Network. The system of metal stripes and vias distributing VDD and GND throughout the chip.</span></div>
+    <div class="glossary-item"><span class="glossary-term">WNS / TNS</span><span class="glossary-def">Worst Negative Slack / Total Negative Slack. Timing metrics — negative values indicate timing violations that must be fixed before tapeout.</span></div>
+    <div class="glossary-item"><span class="glossary-term">sky130</span><span class="glossary-def">SkyWater 130nm open-source PDK, released by Google and SkyWater Technology. The most popular PDK for learning and open-source chip design.</span></div>
+    <div class="glossary-item"><span class="glossary-term">abc</span><span class="glossary-def">A logic synthesis and verification tool integrated into Yosys. Performs technology mapping — converting logic into cells from a .lib liberty file.</span></div>
+  </div>
+</section>
+
+<!-- ── SECTION 8: RESOURCES ── -->
+<section id="resources">
+  <h2>
+    <span class="section-icon" style="background:rgba(245,166,35,0.12);color:var(--accent3)">🔗</span>
+    Further Learning
+  </h2>
+  <div class="grid-2">
+    <div class="info-card">
+      <h4>📦 OpenROAD Flow Scripts</h4>
+      <p>The official reference flow with pre-configured examples for sky130, GF180, and ASAP7. Best starting point for a complete working flow.</p>
+      <p style="margin-top:8px"><code>github.com/The-OpenROAD-Project/<br>OpenROAD-flow-scripts</code></p>
+    </div>
+    <div class="info-card">
+      <h4>🌱 Efabless OpenLane</h4>
+      <p>A complete automated RTL-to-GDSII pipeline that wraps Yosys, OpenROAD, and KLayout. Very beginner-friendly with Docker support.</p>
+      <p style="margin-top:8px"><code>github.com/efabless/openlane2</code></p>
+    </div>
+    <div class="info-card">
+      <h4>☁ Google Sky130 PDK</h4>
+      <p>The free open-source PDK you can use for real chip tapeouts via Efabless Chipignite. All documentation and cell libraries are public.</p>
+      <p style="margin-top:8px"><code>github.com/google/skywater-pdk</code></p>
+    </div>
+    <div class="info-card">
+      <h4>📺 Zero to ASIC Course</h4>
+      <p>Matt Venn's beginner-friendly course covering the entire open-source VLSI flow, including how to get your chip manufactured for free via shuttle runs.</p>
+      <p style="margin-top:8px"><code>zerotoasiccourse.com</code></p>
+    </div>
+    <div class="info-card">
+      <h4>📐 OpenLane Documentation</h4>
+      <p>Step-by-step guides, TCL command references, and configuration variables for every stage of the OpenLane/OpenROAD flow.</p>
+      <p style="margin-top:8px"><code>openlane.readthedocs.io</code></p>
+    </div>
+    <div class="info-card">
+      <h4>💬 Community: Open Hardware Slack</h4>
+      <p>Active Slack workspace for the open-source chip design community. Great for getting help with PDK issues, tool bugs, and design questions.</p>
+      <p style="margin-top:8px"><code>slack.skywater.org</code></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>VLSI Open-Source Tool Flow Documentation · Yosys · OpenROAD · KLayout</p>
+  <p style="margin-top:6px">Built for beginners · <a href="https://theopenroadproject.org">OpenROAD Project</a> · <a href="https://yosyshq.net/yosys/">YosysHQ</a> · <a href="https://www.klayout.de">KLayout</a></p>
+</footer>
+
+<script>
+  function switchTab(group, id) {
+    document.querySelectorAll(`[id^="${group}-"]`).forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`${group}-${id}`).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  function copyCode(btn) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    navigator.clipboard.writeText(pre.innerText).then(() => {
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 1800);
+    });
+  }
+
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('.nav-link');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const link = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
